@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Text, JSON, Index, UniqueConstraint
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Text, JSON, Index, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship
 import uuid
 import datetime
@@ -35,6 +35,13 @@ class User(Base):
     locked_until = Column(String, nullable=True)
 
     created_at = Column(String, default=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat(), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('user', 'User', 'admin', 'Administrator', 'Security Administrator', 'Security Analyst')",
+            name="chk_users_role"
+        ),
+    )
 
 class ScanTarget(Base):
     __tablename__ = "scan_targets"
@@ -76,6 +83,12 @@ class Scan(Base):
     __table_args__ = (
         Index("idx_scans_user_created", "user_id", "created_at"),
         Index("idx_scans_status", "status"),
+        CheckConstraint("depth IN ('quick', 'standard', 'deep')", name="chk_scans_depth"),
+        CheckConstraint(
+            "status IN ('queued', 'running', 'completed', 'failed', 'cancelled', 'QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED')",
+            name="chk_scans_status"
+        ),
+        CheckConstraint("progress >= 0 AND progress <= 100", name="chk_scans_progress"),
     )
 
 class Finding(Base):
@@ -110,6 +123,14 @@ class Finding(Base):
         Index("idx_findings_scan_id", "scan_id"),
         Index("idx_findings_severity", "severity"),
         Index("idx_findings_type", "type"),
+        CheckConstraint(
+            "severity IN ('critical', 'high', 'medium', 'low', 'info', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO')",
+            name="chk_findings_severity"
+        ),
+        CheckConstraint(
+            "status IN ('HIGH', 'MEDIUM', 'LOW', 'NOT_DETECTED', 'SCANNER_ERROR', 'INCONCLUSIVE', 'CONFIRMED', 'ERROR', 'DETECTED', 'open', 'resolved', 'false_positive')",
+            name="chk_findings_status"
+        ),
     )
 
 class UserSettings(Base):
@@ -121,3 +142,7 @@ class UserSettings(Base):
     notif_scan_failed = Column(Boolean, default=True, nullable=False)
     notif_security_findings = Column(Boolean, default=True, nullable=False)
     updated_at = Column(String, default=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat(), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("default_scan_depth IN ('quick', 'standard', 'deep')", name="chk_user_settings_depth"),
+    )
