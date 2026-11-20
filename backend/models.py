@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Text, JSON, Index, UniqueConstraint, CheckConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 import uuid
 import datetime
@@ -67,13 +68,13 @@ class Scan(Base):
     status = Column(String, default="queued", nullable=False, index=True) # queued, running, completed, failed
     progress = Column(Integer, default=0, nullable=False)
     stage = Column(String, default="Queued", nullable=False)
-    checks = Column(JSON, default=dict)
-    modules = Column(JSON, nullable=True)
+    checks = Column(JSON().with_variant(JSONB, "postgresql"), default=dict)
+    modules = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     security_score = Column(Integer, nullable=True)
     
     # Optional Auth Contexts (JSON, typically {"headers": {"Authorization": "Bearer..."}})
-    auth_context_1 = Column(JSON, nullable=True)
-    auth_context_2 = Column(JSON, nullable=True)
+    auth_context_1 = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
+    auth_context_2 = Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     
     created_at = Column(String, default=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat(), nullable=False)
     finished_at = Column(String, nullable=True)
@@ -110,7 +111,7 @@ class Finding(Base):
     request = Column(Text, nullable=True)
     response_summary = Column(Text, nullable=True)
     impact = Column(Text, nullable=True)
-    remediation = Column(JSON, default=list) # JSON list of strings
+    remediation = Column(JSON().with_variant(JSONB, "postgresql"), default=list) # JSON list of strings
     owasp = Column(String, nullable=True)
     cwe = Column(String, nullable=True)
     ai_explanation = Column(Text, nullable=True)
