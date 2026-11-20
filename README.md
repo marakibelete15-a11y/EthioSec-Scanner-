@@ -80,15 +80,20 @@ source venv/bin/activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure local environment variables
+# 4. Set up PostgreSQL database & apply migrations
+bash ../db/setup_postgres.sh
+alembic upgrade head
+
+# 5. Configure local environment variables
 cp .env.example .env
 ```
 
-Review `backend/.env`. By default, it operates in safe local development mode:
+Review `backend/.env`. By default, it operates with PostgreSQL:
 - `ENVIRONMENT=development`
-- `DATABASE_URL=sqlite:///./ethiosec.db`
+- `DATABASE_URL=postgresql+psycopg2://ethiosec_user:ethiosecpass@localhost:5432/ethiosec_db`
 - `REQUIRE_EMAIL_VERIFICATION=true`
 - SMTP credentials left blank (verification codes log directly to terminal)
+- For comprehensive ER diagrams and schema details, see [docs/DATABASE.md](docs/DATABASE.md).
 
 ### 3. Start the Backend API
 ```bash
