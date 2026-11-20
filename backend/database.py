@@ -4,15 +4,22 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(BASE_DIR, ".env")
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+else:
+    load_dotenv()
 
 logger = logging.getLogger("ethiosec.database")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 
 # Database configuration
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_DB_PATH = os.path.join(BASE_DIR, "ethiosec.db")
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{SQLITE_DB_PATH}")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+psycopg2://ethiosec_user:ethiosecpass@localhost:5432/ethiosec_db"
+)
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 def init_engine():

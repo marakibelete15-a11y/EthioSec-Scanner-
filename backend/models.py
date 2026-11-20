@@ -54,7 +54,6 @@ class ScanTarget(Base):
     created_at = Column(String, default=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat(), nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "url", name="uq_scan_targets_user_id_url"),
         Index("idx_scan_targets_user_id", "user_id"),
     )
 

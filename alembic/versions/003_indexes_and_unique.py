@@ -28,14 +28,12 @@ def upgrade() -> None:
     op.create_index('idx_findings_severity', 'findings', ['severity'], unique=False)
     op.create_index('idx_findings_type', 'findings', ['type'], unique=False)
 
-    # 3. Index and unique constraint on scan_targets
+    # 3. Index on scan_targets
     op.create_index('idx_scan_targets_user_id', 'scan_targets', ['user_id'], unique=False)
-    op.create_unique_constraint('uq_scan_targets_user_id_url', 'scan_targets', ['user_id', 'url'])
 
 
 def downgrade() -> None:
-    # 1. Drop constraint & index on scan_targets
-    op.drop_constraint('uq_scan_targets_user_id_url', 'scan_targets', type_='unique')
+    # 1. Drop index on scan_targets
     op.drop_index('idx_scan_targets_user_id', table_name='scan_targets')
 
     # 2. Drop indexes on findings
