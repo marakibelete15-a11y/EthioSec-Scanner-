@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Text, JSON
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Text, JSON, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 import uuid
 import datetime
@@ -45,6 +45,11 @@ class ScanTarget(Base):
     authorized = Column(Boolean, default=False, nullable=False)
     created_at = Column(String, default=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat(), nullable=False)
 
+    __table_args__ = (
+        UniqueConstraint("user_id", "url", name="uq_scan_targets_user_id_url"),
+        Index("idx_scan_targets_user_id", "user_id"),
+    )
+
 class Scan(Base):
     __tablename__ = "scans"
 
@@ -52,7 +57,7 @@ class Scan(Base):
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     target_url = Column(String, nullable=False)
     depth = Column(String, default="standard", nullable=False)
-    status = Column(String, default="queued", nullable=False) # queued, running, completed, failed
+    status = Column(String, default="queued", nullable=False, index=True) # queued, running, completed, failed
     progress = Column(Integer, default=0, nullable=False)
     stage = Column(String, default="Queued", nullable=False)
     checks = Column(JSON, default=dict)
@@ -68,14 +73,19 @@ class Scan(Base):
     
     findings = relationship("Finding", back_populates="scan", cascade="all, delete-orphan")
 
+    __table_args__ = (
+        Index("idx_scans_user_created", "user_id", "created_at"),
+        Index("idx_scans_status", "status"),
+    )
+
 class Finding(Base):
     __tablename__ = "findings"
 
     id = Column(String, primary_key=True, index=True, default=generate_uuid)
-    scan_id = Column(String, ForeignKey("scans.id", ondelete="CASCADE"))
+    scan_id = Column(String, ForeignKey("scans.id", ondelete="CASCADE"), index=True)
     target_id = Column(String, ForeignKey("scan_targets.id", ondelete="SET NULL"), nullable=True)
-    type = Column(String, nullable=False)
-    severity = Column(String, nullable=False) # critical, high, medium, low, info
+    type = Column(String, nullable=False, index=True)
+    severity = Column(String, nullable=False, index=True) # critical, high, medium, low, info
     confidence = Column(String, default="HIGH")
     status = Column(String, default="NOT_DETECTED") # HIGH, MEDIUM, LOW, NOT_DETECTED, SCANNER_ERROR
     url = Column(String, nullable=True)
@@ -95,6 +105,12 @@ class Finding(Base):
 
     scan = relationship("Scan", back_populates="findings")
     target = relationship("ScanTarget")
+
+    __table_args__ = (
+        Index("idx_findings_scan_id", "scan_id"),
+        Index("idx_findings_severity", "severity"),
+        Index("idx_findings_type", "type"),
+    )
 
 class UserSettings(Base):
     __tablename__ = "user_settings"
