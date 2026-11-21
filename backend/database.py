@@ -4,46 +4,58 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(BASE_DIR, ".env")
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+else:
+    load_dotenv()
 
 logger = logging.getLogger("ethiosec.database")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 
 # Database configuration
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_DB_PATH = os.path.join(BASE_DIR, "ethiosec.db")
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{SQLITE_DB_PATH}")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+psycopg2://ethiosec_user:ethiosecpass@localhost:5432/ethiosec_db"
+)
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 def init_engine():
     global DATABASE_URL
     is_sqlite = DATABASE_URL.startswith("sqlite")
     
+    if is_sqlite:
+        eng = create_engine(
+            DATABASE_URL,
+            connect_args={"check_same_thread": False},
+            pool_pre_ping=True
+        )
+        with eng.connect() as conn:
+            pass
+        return eng
+
+    # PostgreSQL / production-grade engine with connection pooling
     try:
         eng = create_engine(
             DATABASE_URL,
-            connect_args={"check_same_thread": False} if is_sqlite else {},
-            pool_pre_ping=True
+            pool_size=10,
+            max_overflow=20,
+            pool_pre_ping=True,
+            pool_recycle=1800
         )
         # Verify connection immediately
         with eng.connect() as conn:
             pass
         return eng
     except Exception as e:
-        if ENVIRONMENT == "production":
-            logger.critical(f"FATAL: Failed to connect to production database ({DATABASE_URL}): {e}")
-            raise RuntimeError(
-                f"FATAL: Production database connection failed ({e}). "
-                "Silent fallback to SQLite in production is strictly prohibited."
-            ) from e
-        
-        # Development / test mode fallback with explicit warning
-        DATABASE_URL = f"sqlite:///{SQLITE_DB_PATH}"
-        logger.warning(
-            f"[DEV WARNING] Could not connect to default database ({e}). "
-            f"In development mode, falling back to local SQLite at {DATABASE_URL}."
-        )
-        return create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+        logger.critical(f"FATAL: Database connection failed for {DATABASE_URL}: {e}")
+        raise RuntimeError(
+            f"Failed to connect to database at '{DATABASE_URL}': {e}. "
+            "Silent fallback to SQLite is disabled. Ensure PostgreSQL is running and reachable, "
+            "or set DATABASE_URL explicitly to a sqlite:/// URL for local test runs."
+        ) from e
 
 engine = init_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
